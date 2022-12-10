@@ -21,7 +21,6 @@ import android.content.pm.ResolveInfo;
 import android.database.Cursor;
 import android.os.Bundle;
 import android.provider.ContactsContract;
-import android.telephony.PhoneNumberUtils;
 import android.util.Log;
 import android.view.View;
 
@@ -30,6 +29,7 @@ import androidx.annotation.Nullable;
 import com.bald.uriah.baldphone.R;
 import com.bald.uriah.baldphone.adapters.ContactRecyclerViewAdapter;
 import com.bald.uriah.baldphone.adapters.IntentAdapter;
+import com.bald.uriah.baldphone.contact_providers.AccountId;
 import com.bald.uriah.baldphone.databases.contacts.Contact;
 import com.bald.uriah.baldphone.utils.BaldToast;
 import com.bald.uriah.baldphone.utils.D;
@@ -38,7 +38,6 @@ import com.bald.uriah.baldphone.views.BaldSwitch;
 import com.bald.uriah.baldphone.views.ModularRecyclerView;
 import com.yqritc.recyclerviewflexibledivider.HorizontalDividerItemDecoration;
 
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -54,12 +53,11 @@ public class ShareActivity extends BaseContactsActivity {
     private static final String STAR_SELECTION =
             "AND " + ContactsContract.Data.STARRED + " = 1";
     private static final String SELECTION_NAME =
-            ContactsContract.Data.MIMETYPE + "='" + "vnd.android.cursor.item/vnd.com.whatsapp.profile" + "' AND " + ContactsContract.RawContacts.ACCOUNT_TYPE + "= ? AND " + ContactsContract.Data.DISPLAY_NAME + " LIKE ?";
+            ContactsContract.Data.MIMETYPE + "='" + D.WHATSAPP_PROFILE_MIMETYPE + "' AND " + ContactsContract.RawContacts.ACCOUNT_TYPE + "= ? AND " + ContactsContract.Data.DISPLAY_NAME + " LIKE ?";
     private Intent shareIntent;
     private BaldSwitch bald_switch;
     private ModularRecyclerView recyclerView;
     private View differently_container, whatsapp_container;
-    private List<ResolveInfo> resolveInfoList = Collections.EMPTY_LIST;
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -85,7 +83,7 @@ public class ShareActivity extends BaseContactsActivity {
         mode = ContactRecyclerViewAdapter.MODE_SHARE;
         final Intent callingIntent = getIntent();
         shareIntent = callingIntent.getParcelableExtra(EXTRA_SHARABLE_URI);
-        resolveInfoList = getPackageManager().queryIntentActivities(shareIntent, 0);
+        List<ResolveInfo> resolveInfoList = getPackageManager().queryIntentActivities(shareIntent, 0);
 
         recyclerView.setAdapter(new IntentAdapter(this, resolveInfoList, (resolveInfo, context) -> context.startActivity(shareIntent.setPackage(resolveInfo.activityInfo.packageName))));
         recyclerView.setHasFixedSize(true);
@@ -122,7 +120,7 @@ public class ShareActivity extends BaseContactsActivity {
     }
 
     private Cursor getContactsByNameFilter(String filter, boolean favorite) {
-        final String[] args = {"com.whatsapp", "%" + filter + "%"};
+        final String[] args = {D.WHATSAPP_PACKAGE_NAME, "%" + filter + "%"};
         try {
             return contentResolver.query(ContactsContract.Data.CONTENT_URI,
                     ContactRecyclerViewAdapter.PROJECTION,
@@ -149,9 +147,13 @@ public class ShareActivity extends BaseContactsActivity {
             return;
         }
         shareIntent.setPackage(D.WHATSAPP_PACKAGE_NAME);
-        String smsNumber = PhoneNumberUtils.stripSeparators(contact.getWhatsappNumbers().get(0)).replace("+", "").replace(" ", "");
-        shareIntent.putExtra("jid", smsNumber + "@s.whatsapp.net"); //phone number without "+" prefix
-        startActivity(shareIntent);
+        for(AccountId accId : contact.getAccountIds()){
+            if(!accId.getPackageName().equals(D.WHATSAPP_PACKAGE_NAME))
+                continue;
+            accId.prepareIntent(shareIntent);
+            startActivity(shareIntent);
+            break;
+        }
         finish();
     }
 }

@@ -18,7 +18,6 @@ package com.bald.uriah.baldphone.activities.contacts;
 
 import android.app.Activity;
 import android.content.ActivityNotFoundException;
-import android.content.ComponentName;
 import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Intent;
@@ -28,7 +27,6 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.provider.ContactsContract;
-import android.telephony.PhoneNumberUtils;
 import android.util.Log;
 import android.util.Pair;
 import android.view.LayoutInflater;
@@ -46,6 +44,7 @@ import com.bald.uriah.baldphone.activities.BaldActivity;
 import com.bald.uriah.baldphone.activities.DialerActivity;
 import com.bald.uriah.baldphone.activities.SOSActivity;
 import com.bald.uriah.baldphone.adapters.CallsRecyclerViewAdapter;
+import com.bald.uriah.baldphone.contact_providers.AccountId;
 import com.bald.uriah.baldphone.databases.calls.Call;
 import com.bald.uriah.baldphone.databases.calls.CallLogsHelper;
 import com.bald.uriah.baldphone.databases.contacts.Contact;
@@ -53,6 +52,7 @@ import com.bald.uriah.baldphone.databases.home_screen_pins.HomeScreenPinHelper;
 import com.bald.uriah.baldphone.utils.BDB;
 import com.bald.uriah.baldphone.utils.BDialog;
 import com.bald.uriah.baldphone.utils.BaldToast;
+import com.bald.uriah.baldphone.utils.D;
 import com.bald.uriah.baldphone.utils.S;
 import com.bald.uriah.baldphone.utils.Toggeler;
 import com.bald.uriah.baldphone.views.BaldLinearLayoutButton;
@@ -62,6 +62,7 @@ import com.bald.uriah.baldphone.views.ScrollingHelper;
 import com.bumptech.glide.Glide;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * Simple Activity for interacting with a {@link Contact}.
@@ -130,8 +131,8 @@ public class SingleContactActivity extends BaldActivity {
         if (contact.hasPhone())
             inflatePhones();
 
-        if (contact.hasWhatsapp())
-            inflateWhatsapp();
+        if (contact.hasAccounts())
+            inflateAccounts();
 
         if (contact.hasMail())
             inflateMails();
@@ -203,9 +204,9 @@ public class SingleContactActivity extends BaldActivity {
             final Pair<Integer, String> pair = phoneList.get(i);
             final Pair<Integer, String> next = phoneList.get(i + 1);
             if (pair.second
-                    .replaceAll("[^0123456789]", "")
+                    .replaceAll(D.NOT_NUMBERS_REGEX, "")
                     .equals(next.second
-                            .replaceAll("[^0123456789]", ""))) {
+                            .replaceAll(D.NOT_NUMBERS_REGEX, ""))) {
                 phoneList.remove(pair);
                 phoneListSize--;
                 i--;
@@ -232,23 +233,17 @@ public class SingleContactActivity extends BaldActivity {
 
     }
 
-    private void inflateWhatsapp() {
-        final List<String> whatappNumbers = contact.getWhatsappNumbers();
-        for (String whatappNumber : whatappNumbers) {
+    private void inflateAccounts() {
+        final Set<AccountId> accountIds = contact.getAccountIds();
+        for (AccountId accId : accountIds) {
             final View layout = layoutInflater.inflate(R.layout.contact_whatsapp, ll, false);
             layout.findViewById(R.id.whatsapp).setOnClickListener((v) ->
-                    startActivity(
-                            new Intent("android.intent.activate.MAIN")
-                                    .setComponent(new ComponentName("com.whatsapp", "com.whatsapp.Conversation"))
-                                    .putExtra("jid",
-                                            PhoneNumberUtils.stripSeparators(
-                                                    whatappNumber
-                                                            .replaceAll(
-                                                                    "[^0123456789]",
-                                                                    "")
-                                            ) + "@s.whatsapp.net")
+                        startActivity(accId.getConversationIntent()
                     )
             );
+//            MODIFY VIEW FOR OTHER PROVIDERS
+//            ((BaldPictureTextButton)layout.findViewById(R.id.whatsapp)).setText("");
+//            ((BaldPictureTextButton)layout.findViewById(R.id.whatsapp)).setImageDrawable(null);
             ll.addView(layout);
         }
     }

@@ -26,6 +26,7 @@ import com.bald.uriah.baldphone.R;
 
 public class D {
     public static final String WHATSAPP_PACKAGE_NAME = "com.whatsapp";
+    public static final String WHATSAPP_PROFILE_MIMETYPE = "vnd.android.cursor.item/vnd.com.whatsapp.profile";
     public static final int
             MILLISECOND = 1,
             SECOND = 1000 * MILLISECOND,
@@ -40,6 +41,7 @@ public class D {
     public static final View.OnClickListener EMPTY_CLICK_LISTENER = v -> {
     };
     public static final int LOW_BATTERY_LEVEL = 20;
+    public static final String NOT_NUMBERS_REGEX = "[^0123456789]";
 
     //nope.
     private D() {

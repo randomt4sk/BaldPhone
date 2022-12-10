@@ -19,17 +19,18 @@ package com.bald.uriah.baldphone.databases.contacts;
 import android.content.ContentResolver;
 import android.database.Cursor;
 import android.provider.ContactsContract;
-import android.text.TextUtils;
 import android.util.Pair;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.bald.uriah.baldphone.contact_providers.AccountId;
+import com.bald.uriah.baldphone.contact_providers.AccountService;
 import com.bald.uriah.baldphone.utils.Constants;
-import com.bald.uriah.baldphone.utils.D;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Immutable Contact class
@@ -45,7 +46,7 @@ public class Contact implements Constants.ContactConstants {
     @NonNull
     private final List<Pair<Integer, String[]>> addressList;
     @NonNull
-    private final List<String> whatsappNumbers;
+    private final Set<AccountId> accountIds;
     @NonNull
     private final String name;
     @Nullable
@@ -57,7 +58,7 @@ public class Contact implements Constants.ContactConstants {
                     @NonNull List<Pair<Integer, String>> phoneList,
                     @NonNull List<String> mailList,
                     @NonNull List<Pair<Integer, String[]>> addressList,
-                    @NonNull List<String> whatsappNumbers,
+                    @NonNull Set<AccountId> accountIds,
                     @NonNull String name,
                     @Nullable String photo,
                     boolean favorite) {
@@ -66,7 +67,7 @@ public class Contact implements Constants.ContactConstants {
         this.phoneList = phoneList;
         this.mailList = mailList;
         this.addressList = addressList;
-        this.whatsappNumbers = whatsappNumbers;
+        this.accountIds = accountIds;
         this.name = name;
         this.photo = photo;
         this.favorite = favorite;
@@ -107,7 +108,7 @@ public class Contact implements Constants.ContactConstants {
         final List<Pair<Integer /*Type*/, String>> phoneList = new ArrayList<>();
         final List<String> mailList = new ArrayList<>();
         final List<Pair<Integer, String[]>> addressList = new ArrayList<>();
-        final List<String> whatsappNumbers;
+        final Set<AccountId> accountIds;
         final String name;
         final String photo;
         final boolean favorite;
@@ -150,41 +151,9 @@ public class Contact implements Constants.ContactConstants {
             }
         }
 
-        whatsappNumbers = getWhatsAppNumbers(contentResolver, name);
+        accountIds = AccountService.getAccountIdsByName(contentResolver, name);
         favorite = cursor.getInt(cursor.getColumnIndex(ContactsContract.Contacts.STARRED)) == 1;
-        return new Contact(Integer.parseInt(id), lookupKey, phoneList, mailList, addressList, whatsappNumbers, name, photo, favorite);
-    }
-
-    /**
-     * @param contentResolver - a content resolver
-     * @param contactName     - the contact DISPLAY_NAME
-     * @return List of the whatsapp numbers.
-     */
-    private static List<String> getWhatsAppNumbers(ContentResolver contentResolver, String contactName) {
-        final List<String> whatsappNumbers = new ArrayList<>();
-        try (final Cursor cursor1 =
-                     contentResolver.query(
-                             ContactsContract.RawContacts.CONTENT_URI,
-                             new String[]{ContactsContract.RawContacts._ID},
-                             ContactsContract.RawContacts.ACCOUNT_TYPE + "= ? AND " + ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME_PRIMARY + " = ?",
-                             new String[]{D.WHATSAPP_PACKAGE_NAME, contactName},
-                             null)) {
-            String rawContactId, phoneNumber;
-            while (cursor1.moveToNext()) {
-                rawContactId = cursor1.getString(cursor1.getColumnIndex(ContactsContract.RawContacts._ID));
-                try (Cursor cursor2 = contentResolver.query(ContactsContract.Data.CONTENT_URI, new String[]{ContactsContract.Data.DATA3}, ContactsContract.Data.MIMETYPE + " = ? AND " + ContactsContract.Data.RAW_CONTACT_ID + " = ? ", new String[]{"vnd.android.cursor.item/vnd.com.whatsapp.profile", rawContactId}, null)) {
-                    while (cursor2.moveToNext()) {
-                        phoneNumber = cursor2.getString(0);
-                        if (TextUtils.isEmpty(phoneNumber))
-                            continue;
-                        if (phoneNumber.startsWith("Message"))
-                            phoneNumber = phoneNumber.replace("Message", "");
-                        whatsappNumbers.add(phoneNumber);
-                    }
-                }
-            }
-            return whatsappNumbers;
-        }
+        return new Contact(Integer.parseInt(id), lookupKey, phoneList, mailList, addressList, accountIds, name, photo, favorite);
     }
 
     @NonNull
@@ -213,8 +182,8 @@ public class Contact implements Constants.ContactConstants {
     }
 
     @NonNull
-    public List<String> getWhatsappNumbers() {
-        return whatsappNumbers;
+    public Set<AccountId> getAccountIds() {
+        return accountIds;
     }
 
     @NonNull
@@ -244,8 +213,16 @@ public class Contact implements Constants.ContactConstants {
         return phoneList.size() > 0;
     }
 
-    public boolean hasWhatsapp() {
-        return whatsappNumbers.size() > 0;
+    public boolean hasAccounts() {
+        return !accountIds.isEmpty();
+    }
+
+    public boolean hasAccounts(String packageName) {
+        for(AccountId accId : accountIds){
+            if(accId.getAccountInfo().getPackageName().equals(packageName))
+                return true;
+        }
+        return false;
     }
 
     public boolean hasMail() {

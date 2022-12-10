@@ -76,7 +76,7 @@ import static com.bald.uriah.baldphone.services.NotificationListenerService.NOTI
 @SuppressLint("ViewConstructor")
 public class HomePage1 extends HomeView {
     public static final String TAG = HomePage1.class.getSimpleName();
-    private final static String WHATSAPP_PACKAGE_NAME = "com.whatsapp";
+    private final static String WHATSAPP_PACKAGE_NAME = D.WHATSAPP_PACKAGE_NAME;
     private final static ComponentName WHATSAPP_COMPONENT_NAME =
             new ComponentName(WHATSAPP_PACKAGE_NAME, WHATSAPP_PACKAGE_NAME + ".Main");
     public Map<App, FirstPageAppIcon> viewsToApps;
@@ -91,7 +91,7 @@ public class HomePage1 extends HomeView {
         public void onReceive(Context context, Intent intent) {
             final Set<String> packagesSet = new HashSet<>(intent.getStringArrayListExtra("packages"));
             if (!viewsToApps.containsValue(bt_whatsapp))
-                bt_whatsapp.setBadgeVisibility(packagesSet.contains(D.WHATSAPP_PACKAGE_NAME));
+                bt_whatsapp.setBadgeVisibility(packagesSet.contains(WHATSAPP_PACKAGE_NAME));
             if (!viewsToApps.containsValue(bt_recent))
                 bt_recent.setBadgeVisibility(!CallLogsHelper.isAllReadSafe(getContext().getContentResolver()));
             if (!viewsToApps.containsValue(bt_messages))
